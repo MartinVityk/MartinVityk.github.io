@@ -1,0 +1,150 @@
+<html>
+    <head>
+    </head>
+    <body>
+        <button onclick="stream()">Start stream</button>
+        <button onclick="streamer.stop()">Stop stream</button>
+        <button onclick="player.start()">Play stream</button>
+        <button onclick="player.stop()">Stop playing</button>
+        <br>
+        <br>
+        <a href="#" class="mute" onclick="voiceMute()">Mute</a>
+        <br>
+        <br>
+        <input id="volume" type="range" min ="0.0" max="1.0" step ="0.01" oninput="setVol(this.value)" onchange="setVol(this.value)" style="-webkit-appearance: slider-vertical">
+        <input type="text" id="volumeIndicator">
+		<div id="cpu"></div>
+		<link href="css/c3.min.css" rel="stylesheet">
+    </body>
+    <script src="ws-audio-api.min.js"></script>
+	<script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="js/d3.min.js"></script>
+    <script src="js/c3.min.js"></script>
+    <script>
+	
+	var defaultConfig = { 
+    codec: {
+        sampleRate: 16000,
+        channels: 1,
+        app: 2048,
+        frameDuration: 20,
+        bufferSize: 4096
+    },
+    server: 'ws://' + 'localhost' + ':8765'
+}
+        var player = new WSAudioAPI.Player(defaultConfig); // Note that here i use default server location. Don't forget set correct address
+        var streamer = new WSAudioAPI.Streamer(defaultConfig);
+        var mute = document.querySelector('.mute');
+        var volume = document.querySelector('#volume');
+        var volumeIndicator = document.querySelector('#volumeIndicator');
+		//const graphSocket = new WebSocket('ws://localhost:8765');
+	//	streamer.socket.addEventListener('message', function (event) {
+		//	console.log('Message from server ', event.data);
+	//	});
+		// Create WebSocket connection.
+
+		// Listen for messages
+        volumeIndicator.value = player.getVolume();
+
+        function setVol(val){
+            player.setVolume(val);
+            volumeIndicator.value = player.getVolume();
+        }
+		
+		function stream()
+		{
+			streamer.start()
+			var input = [['x', (t)],['speaker0', null],['speaker1', null],['speaker2', null],['speaker3', null],['speaker4', null] ];
+			//console.log('Message from server ', streamer);
+			streamer.socket.addEventListener('message', function (event) {
+				//console.log('Message from server ', event.data === '0');
+				t += 500;
+				input[0][1] = t;
+				if(!(event.data === ""))
+				{
+					var arr = event.data.split(" ");
+					console.log(arr)
+					arr.forEach(function (item, index) {
+						if(!(item === ""))
+						{
+						  var pNum = parseInt(item);
+						  input[pNum+1][1] = pNum;
+						}
+					});
+				}
+				if(t%1000 === 0)
+				{
+					chart.flow({
+					columns: input,
+					});
+					input = [['x', (t)],['speaker0', null],['speaker1', null],['speaker2', null],['speaker3', null],['speaker4', null] ];
+				}
+			});
+		}
+		
+
+        function voiceMute() {
+          if(mute.id == "") {
+            streamer.mute();
+            mute.id = "activated";
+            mute.innerHTML = "Unmute";
+          } else {
+            streamer.unMute();
+            mute.id = "";
+            mute.innerHTML = "Mute";
+          }
+        }
+		var t = 0
+    var chart = c3.generate({
+        bindto: '#cpu',
+        point: {
+            show: false
+        },
+
+        data: {
+            type: "spline",
+            x: 'x',
+            //        xFormat: '%Y%m%d', // 'xFormat' can be used as custom format of 'x'
+            columns: [
+                ['x', (0),1000, 2000, 3000, 4000, 5000, 6000],
+                //            ['x', '20130101', '20130102', '20130103', '20130104', '20130105', '20130106'],
+
+                ['speaker0', null, null, null, null, null, null, null],
+				['speaker1', null, null, null, null, null, null, null],
+				['speaker2', null, null, null, null, null, null, null],
+				['speaker3', null, null, null, null, null, null, null],
+				['speaker4', null, null, null, null, null, null, null]
+            ],
+            connectNull: true
+        },
+        axis: {
+            x: {
+                type: 'timeseries',
+                tick: {
+                    format: '%M:%S'
+                },
+                label: {
+                    text: 'Time',
+                    position: 'inner-center',
+                }
+
+            },
+            y: {
+				max: -1,
+				min: 5,
+				tick: {
+                format: function (d) {
+                    return (parseInt(d) == d) ? d : null;
+                }},
+                label: {
+                    text: 'Person #',
+                    position: 'outer-middle',
+                }
+            }
+
+        }
+    });
+
+
+    </script>
+</html>
